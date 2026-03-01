@@ -4,7 +4,7 @@ import json
 from loguru import logger
 from redis.asyncio import Redis
 
-from app.settings import REDIS_URL
+from app.settings import CONTACT_RATE_LIMIT, CONTACT_RATE_WINDOW, REDIS_URL
 
 _redis: Redis | None = None
 VERIFY_TTL = 300  # 5 minutes
@@ -44,6 +44,20 @@ async def set_verify_cache(token: str, user_id: str, payload: dict) -> None:
         await pipe.execute()
     except Exception:
         logger.warning("Redis set failed — skipping cache", exc_info=True)
+
+
+async def check_contact_rate_limit(ip: str) -> bool:
+    """Returns True if the request is allowed, False if rate-limited."""
+    key = f"contact:rate:{ip}"
+    try:
+        r = get_redis()
+        current = await r.incr(key)
+        if current == 1:
+            await r.expire(key, CONTACT_RATE_WINDOW)
+        return current <= CONTACT_RATE_LIMIT
+    except Exception:
+        logger.warning("Redis rate-limit check failed — allowing request", exc_info=True)
+        return True
 
 
 async def invalidate_user_cache(user_id: str) -> None:

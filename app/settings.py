@@ -17,6 +17,13 @@ SMTP_USER = os.environ.get("SMTP_USER", "")
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "contact@ploshtadka.bg")
 
+# Cloudflare Turnstile
+TURNSTILE_SECRET_KEY = os.environ.get("TURNSTILE_SECRET_KEY", "")
+
+# Contact form rate limit (requests per IP per window)
+CONTACT_RATE_LIMIT = int(os.environ.get("CONTACT_RATE_LIMIT", "5"))
+CONTACT_RATE_WINDOW = int(os.environ.get("CONTACT_RATE_WINDOW", "3600"))  # seconds
+
 
 def access_token_expires_delta() -> timedelta:
     return timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
