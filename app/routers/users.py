@@ -29,9 +29,9 @@ from app.settings import FRONTEND_BASE_URL, NOTIFICATIONS_MS_URL
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-async def _send_verification_email(email: str, token: str) -> None:
+async def _send_verification_email(email: str, token: str, locale: str = "bg") -> None:
     """Fire-and-forget call to notifications-ms to send the verification email."""
-    verify_url = f"{FRONTEND_BASE_URL}/auth/verify-email?token={token}"
+    verify_url = f"{FRONTEND_BASE_URL}/{locale}/auth/verify-email?token={token}"
     html = (
         "<h2>Потвърдете имейла си / Verify your email</h2>"
         f'<p>Натиснете бутона по-долу, за да активирате акаунта си:</p>'
@@ -67,7 +67,7 @@ async def _send_verification_email(email: str, token: str) -> None:
 
 
 @router.post("/", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
-async def register_user(payload: UserCreate) -> UserPublic:
+async def register_user(payload: UserCreate, locale: str = Query(default="bg")) -> UserPublic:
     existing_username = await get_user_by_username(payload.username)
     if existing_username:
         raise HTTPException(
@@ -97,7 +97,7 @@ async def register_user(payload: UserCreate) -> UserPublic:
     )
 
     if payload.email:
-        await _send_verification_email(str(payload.email), verification_token)
+        await _send_verification_email(str(payload.email), verification_token, locale)
         logger.info("Verification email sent to {}", payload.email)
 
     return UserPublic.model_validate(user)
