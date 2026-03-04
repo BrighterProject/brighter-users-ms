@@ -48,6 +48,12 @@ class PaymentScope(StrEnum):
     ADMIN_DELETE = "admin:payments:delete"
 
 
+class NotificationScope(StrEnum):
+    ADMIN = "admin:notifications"
+    ADMIN_READ = "admin:notifications:read"
+    ADMIN_WRITE = "admin:notifications:write"
+
+
 USER_SCOPES_DESCS: dict[str, str] = {
     UserScope.READ: "Read users data.",
     UserScope.ME: "Read current user profile.",
@@ -86,11 +92,19 @@ PAYMENT_SCOPE_DESCRIPTIONS: dict[str, str] = {
 }
 
 
+NOTIFICATION_SCOPE_DESCRIPTIONS: dict[str, str] = {
+    NotificationScope.ADMIN: "Full access to notifications (admin super-scope).",
+    NotificationScope.ADMIN_READ: "View notification history (admin).",
+    NotificationScope.ADMIN_WRITE: "Send notifications (admin).",
+}
+
+
 SCOPE_DESCS = (
     VENUE_SCOPES_DESCRIPTIONS
     | USER_SCOPES_DESCS
     | BOOKING_SCOPE_DESCRIPTIONS
     | PAYMENT_SCOPE_DESCRIPTIONS
+    | NOTIFICATION_SCOPE_DESCRIPTIONS
 )
 DEFAULT_USER_SCOPES = [
     UserScope.ME,
@@ -114,4 +128,5 @@ DEFAULT_ADMIN_SCOPES = [
     VenueScope.ADMIN,
     BookingScope.ADMIN,
     PaymentScope.ADMIN,
+    NotificationScope.ADMIN,
 ]
