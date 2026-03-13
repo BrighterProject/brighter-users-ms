@@ -10,7 +10,7 @@ from app.settings import db_url
 
 setup_logging()
 
-application = FastAPI(title="ploshtadka-users-ms", redirect_slashes=False)
+application = FastAPI(title="brighter-users-ms", redirect_slashes=False)
 
 application.add_middleware(
     CORSMiddleware,

@@ -1,6 +1,6 @@
-# ploshtadka-users-ms
+# brighter-users-ms
 
-Auth authority for the PloshtadkaBG platform. Issues and validates JWTs, manages users and scopes.
+Auth authority for the BrighterProject platform. Issues and validates JWTs, manages users and scopes.
 
 **Port:** `8000` | **Prefix:** `/auth`, `/users`, `/scopes`
 

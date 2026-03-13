@@ -15,7 +15,7 @@ SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER = os.environ.get("SMTP_USER", "")
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
-CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "contact@ploshtadka.bg")
+CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "contact@brighter.bg")
 
 # Cloudflare Turnstile
 TURNSTILE_SECRET_KEY = os.environ.get("TURNSTILE_SECRET_KEY", "")

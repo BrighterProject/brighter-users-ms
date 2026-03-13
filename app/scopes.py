@@ -7,18 +7,18 @@ class UserScope(StrEnum):
     ADMIN = "admin:users"
 
 
-class VenueScope(StrEnum):
-    READ = "venues:read"
-    ME = "venues:me"
-    WRITE = "venues:write"
-    DELETE = "venues:delete"
-    IMAGES = "venues:images"
-    SCHEDULE = "venues:schedule"
+class PropertyScope(StrEnum):
+    READ = "properties:read"
+    ME = "properties:me"
+    WRITE = "properties:write"
+    DELETE = "properties:delete"
+    IMAGES = "properties:images"
+    SCHEDULE = "properties:schedule"
 
-    ADMIN = "admin:venues"
-    ADMIN_READ = "admin:venues:read"
-    ADMIN_WRITE = "admin:venues:write"
-    ADMIN_DELETE = "admin:venues:delete"
+    ADMIN = "admin:properties"
+    ADMIN_READ = "admin:properties:read"
+    ADMIN_WRITE = "admin:properties:write"
+    ADMIN_DELETE = "admin:properties:delete"
 
 
 class BookingScope(StrEnum):
@@ -27,8 +27,8 @@ class BookingScope(StrEnum):
     WRITE = "bookings:write"  # create a booking
     CANCEL = "bookings:cancel"  # cancel own booking
 
-    # Venue owner scopes
-    MANAGE = "bookings:manage"  # confirm / complete / no_show for own venue's bookings
+    # Property owner scopes
+    MANAGE = "bookings:manage"  # confirm / complete / no_show for own property's bookings
 
     # Admin scopes
     ADMIN = "admin:bookings"
@@ -60,24 +60,24 @@ USER_SCOPES_DESCS: dict[str, str] = {
     UserScope.ADMIN: "Perform any user operation (admin).",
 }
 
-VENUE_SCOPES_DESCRIPTIONS: dict[str, str] = {
-    VenueScope.READ: "Browse and search public venue listings.",
-    VenueScope.ME: "Read your own venues and their details.",
-    VenueScope.WRITE: "Create and update your own venues.",
-    VenueScope.DELETE: "Delete your own venues.",
-    VenueScope.IMAGES: "Upload and manage images for your own venues.",
-    VenueScope.SCHEDULE: "Manage unavailability windows for your own venues.",
-    VenueScope.ADMIN: "Perform any venue operation (admin)",
-    VenueScope.ADMIN_READ: "Read any venue regardless of status (admin).",
-    VenueScope.ADMIN_WRITE: "Edit any venue and change its status (admin).",
-    VenueScope.ADMIN_DELETE: "Hard-delete any venue (admin).",
+PROPERTY_SCOPES_DESCRIPTIONS: dict[str, str] = {
+    PropertyScope.READ: "Browse and search public property listings.",
+    PropertyScope.ME: "Read your own properties and their details.",
+    PropertyScope.WRITE: "Create and update your own properties.",
+    PropertyScope.DELETE: "Delete your own properties.",
+    PropertyScope.IMAGES: "Upload and manage images for your own properties.",
+    PropertyScope.SCHEDULE: "Manage unavailability windows for your own properties.",
+    PropertyScope.ADMIN: "Perform any property operation (admin)",
+    PropertyScope.ADMIN_READ: "Read any property regardless of status (admin).",
+    PropertyScope.ADMIN_WRITE: "Edit any property and change its status (admin).",
+    PropertyScope.ADMIN_DELETE: "Hard-delete any property (admin).",
 }
 
 BOOKING_SCOPE_DESCRIPTIONS: dict[str, str] = {
     BookingScope.READ: "View your own bookings.",
-    BookingScope.WRITE: "Create a new booking at a venue.",
+    BookingScope.WRITE: "Create a new booking at a property.",
     BookingScope.CANCEL: "Cancel your own pending or confirmed booking.",
-    BookingScope.MANAGE: "Confirm, complete, or mark no-show on your venue bookings.",
+    BookingScope.MANAGE: "Confirm, complete, or mark no-show on your property bookings.",
     BookingScope.ADMIN_READ: "Read any booking regardless of owner (admin).",
     BookingScope.ADMIN_WRITE: "Modify any booking status (admin).",
     BookingScope.ADMIN_DELETE: "Hard-delete any booking (admin).",
@@ -100,7 +100,7 @@ NOTIFICATION_SCOPE_DESCRIPTIONS: dict[str, str] = {
 
 
 SCOPE_DESCS = (
-    VENUE_SCOPES_DESCRIPTIONS
+    PROPERTY_SCOPES_DESCRIPTIONS
     | USER_SCOPES_DESCS
     | BOOKING_SCOPE_DESCRIPTIONS
     | PAYMENT_SCOPE_DESCRIPTIONS
@@ -108,24 +108,24 @@ SCOPE_DESCS = (
 )
 DEFAULT_USER_SCOPES = [
     UserScope.ME,
-    VenueScope.READ,
+    PropertyScope.READ,
     BookingScope.READ,
     BookingScope.WRITE,
     BookingScope.CANCEL,
     PaymentScope.READ,
 ]
 DEFAULT_OWNER_SCOPES = DEFAULT_USER_SCOPES + [
-    VenueScope.ME,
-    VenueScope.WRITE,
-    VenueScope.DELETE,
-    VenueScope.IMAGES,
-    VenueScope.SCHEDULE,
+    PropertyScope.ME,
+    PropertyScope.WRITE,
+    PropertyScope.DELETE,
+    PropertyScope.IMAGES,
+    PropertyScope.SCHEDULE,
     BookingScope.MANAGE,
     PaymentScope.READ,
 ]
 DEFAULT_ADMIN_SCOPES = [
     UserScope.ADMIN,
-    VenueScope.ADMIN,
+    PropertyScope.ADMIN,
     BookingScope.ADMIN,
     PaymentScope.ADMIN,
     NotificationScope.ADMIN,

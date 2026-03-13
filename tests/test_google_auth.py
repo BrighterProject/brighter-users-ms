@@ -77,7 +77,7 @@ class TestGoogleLogin:
             user_id=uuid4(),
             username="alice",
             email="alice@example.com",
-            scopes=["users:me", "venues:read"],
+            scopes=["users:me", "properties:read"],
         )
         with (
             patch(f"{AUTH_ROUTER_PATH}.google_id_token.verify_oauth2_token", return_value=GOOGLE_CLAIMS),

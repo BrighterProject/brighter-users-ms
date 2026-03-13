@@ -89,7 +89,7 @@ async def send_contact_message(body: ContactRequest, request: Request):
         )
 
     msg = EmailMessage()
-    msg["Subject"] = f"[Ploshtadka.BG Contact] {body.subject}"
+    msg["Subject"] = f"[Brighter.BG Contact] {body.subject}"
     msg["From"] = SMTP_USER
     msg["To"] = CONTACT_EMAIL
     msg["Reply-To"] = body.email

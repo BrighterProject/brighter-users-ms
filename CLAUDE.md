@@ -1,6 +1,6 @@
-# CLAUDE.md — ploshtadka-users-ms
+# CLAUDE.md — brighter-users-ms
 
-FastAPI microservice that is the **auth authority** for the entire PloshtadkaBG platform. It issues JWTs, validates them for Traefik's `forwardAuth`, and owns all user and scope management.
+FastAPI microservice that is the **auth authority** for the entire BrighterProject platform. It issues JWTs, validates them for Traefik's `forwardAuth`, and owns all user and scope management.
 
 ## Package management
 
@@ -37,7 +37,7 @@ uv run uvicorn main:application --host 0.0.0.0 --port 8000       # dev server
 
 `get_current_user()` in `app/deps.py` validates the JWT using `python-jose`. Do **not** remove this validation — it is the gateway check for the entire system.
 
-Downstream services (venues-ms, bookings-ms) do **not** validate JWTs — they only read the headers Traefik injects after this service approves the request.
+Downstream services (properties-ms, bookings-ms) do **not** validate JWTs — they only read the headers Traefik injects after this service approves the request.
 
 ## Project structure
 
@@ -48,7 +48,7 @@ app/
   deps.py              # get_current_user() (JWT validation), get_current_active_user, get_current_admin_user, require_scopes()
   models.py            # User Tortoise model
   schemas.py           # UserCreate, UserPublic, UserUpdate, UserScopesUpdate, Token, TokenData
-  scopes.py            # UserScope, VenueScope, BookingScope StrEnums + DEFAULT_*_SCOPES
+  scopes.py            # UserScope, PropertyScope, BookingScope StrEnums + DEFAULT_*_SCOPES
   settings.py          # DB_URL, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
   routers/
     auth.py            # POST /auth/token, GET /auth/verify
@@ -65,7 +65,7 @@ This service is the **central scope registry** for the whole platform. `app/scop
 | Scope group | StrEnum class | Super-scope |
 |---|---|---|
 | Users | `UserScope` | `admin:users` |
-| Venues | `VenueScope` | `admin:venues` |
+| Properties | `PropertyScope` | `admin:properties` |
 | Bookings | `BookingScope` | `admin:bookings` |
 | Payments | `PaymentScope` | `admin:payments` |
 
@@ -73,13 +73,13 @@ This service is the **central scope registry** for the whole platform. `app/scop
 
 | Set | Assigned to | Contents |
 |---|---|---|
-| `DEFAULT_USER_SCOPES` | Regular user | `users:me`, `venues:read`, `bookings:read`, `bookings:write`, `bookings:cancel` |
-| `DEFAULT_OWNER_SCOPES` | Venue owner | + `venues:me/write/delete/images/schedule`, `bookings:manage` |
-| `DEFAULT_ADMIN_SCOPES` | Admin | `admin:users`, `admin:venues`, `admin:bookings` |
+| `DEFAULT_USER_SCOPES` | Regular user | `users:me`, `properties:read`, `bookings:read`, `bookings:write`, `bookings:cancel` |
+| `DEFAULT_OWNER_SCOPES` | Property owner | + `properties:me/write/delete/images/schedule`, `bookings:manage` |
+| `DEFAULT_ADMIN_SCOPES` | Admin | `admin:users`, `admin:properties`, `admin:bookings` |
 
 ### Scope escalation (admin-only)
 
-`PUT /users/{id}/scopes` — replaces a user's scopes list entirely. Used by the admin panel to escalate a regular user to venue owner by assigning `DEFAULT_OWNER_SCOPES`.
+`PUT /users/{id}/scopes` — replaces a user's scopes list entirely. Used by the admin panel to escalate a regular user to property owner by assigning `DEFAULT_OWNER_SCOPES`.
 
 `GET /scopes/` — returns all defined scopes with descriptions (admin only). Used by the admin panel scope picker UI.
 
