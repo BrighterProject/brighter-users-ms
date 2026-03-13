@@ -1,7 +1,7 @@
 [project]
-name = "mstemplate"
+name = "brighter-users-ms"
 version = "0.1.0"
-description = "Add your description here"
+description = "Users & auth microservice for the BrighterProject platform"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
