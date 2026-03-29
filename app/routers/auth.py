@@ -21,7 +21,7 @@ from app.crud import (
 from app.deps import resolve_user
 from app.schemas import Token
 from app.scopes import DEFAULT_USER_SCOPES
-from app.settings import GOOGLE_CLIENT_ID
+from app.settings import ACCESS_TOKEN_EXPIRE_MINUTES, COOKIE_SECURE, GOOGLE_CLIENT_ID
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -33,8 +33,21 @@ class GoogleTokenRequest(BaseModel):
     credential: str
 
 
+def _set_auth_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+
+
 @router.post("/token", response_model=Token)
 async def login_for_access_token(
+    response: Response,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
     user = await authenticate_user(form_data.username, form_data.password)
@@ -50,20 +63,23 @@ async def login_for_access_token(
     access_token = create_access_token(
         data={"sub": user.username}, scopes=user.scopes or []
     )
+    _set_auth_cookie(response, access_token)
     return Token(access_token=access_token, token_type="bearer")
 
 
 @router.get("/verify")
 async def verify_token(request: Request):
     """Called by Traefik forwardAuth for every protected request."""
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    token = auth_header[7:]
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        token = auth_header[7:]
 
     cached = await get_verify_cache(token)
     if cached:
@@ -96,6 +112,13 @@ async def verify_token(request: Request):
     )
 
 
+@router.post("/logout")
+async def logout(response: Response):
+    """Clear the authentication cookie."""
+    response.delete_cookie(key="access_token", path="/")
+    return {"message": "Logged out"}
+
+
 @router.get("/verify-email")
 async def verify_email(token: str = Query(..., min_length=1)):
     """Public endpoint — activates a user account via the email verification token."""
@@ -117,7 +140,7 @@ async def verify_email(token: str = Query(..., min_length=1)):
 
 
 @router.post("/google", response_model=Token)
-async def login_with_google(body: GoogleTokenRequest) -> Token:
+async def login_with_google(response: Response, body: GoogleTokenRequest) -> Token:
     """Exchange a Google ID token for a platform JWT."""
     try:
         claims = google_id_token.verify_oauth2_token(
@@ -167,4 +190,5 @@ async def login_with_google(body: GoogleTokenRequest) -> Token:
     access_token = create_access_token(
         data={"sub": user.username}, scopes=user.scopes or []
     )
+    _set_auth_cookie(response, access_token)
     return Token(access_token=access_token, token_type="bearer")
