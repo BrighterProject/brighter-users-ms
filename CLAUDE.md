@@ -32,8 +32,10 @@ uv run uvicorn main:application --host 0.0.0.0 --port 8000       # dev server
 
 **This service IS the JWT issuer and validator.** It is the only service that validates JWTs.
 
-- `POST /auth/token` — issues a JWT from credentials
-- `GET /auth/verify` — called by Traefik `forwardAuth` for every protected request; decodes and validates the JWT, then returns `X-User-Id`, `X-Username`, `X-User-Scopes` headers to Traefik
+- `POST /auth/token` — issues a JWT from credentials and sets an **httpOnly `access_token` cookie** (SameSite=Lax; TTL = `ACCESS_TOKEN_EXPIRE_MINUTES`)
+- `POST /auth/google` — same as above for Google OAuth
+- `GET /auth/verify` — called by Traefik `forwardAuth`; reads token from cookie first, falls back to `Authorization: Bearer` header; returns `X-User-Id`, `X-Username`, `X-User-Scopes` headers to Traefik
+- `POST /auth/logout` — clears the `access_token` cookie
 
 `get_current_user()` in `app/deps.py` validates the JWT using `python-jose`. Do **not** remove this validation — it is the gateway check for the entire system.
 
@@ -145,3 +147,4 @@ uv run aerich upgrade
 | `ALGORITHM` | `HS256` | JWT signing algorithm (hardcoded, not overridable) |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | JWT TTL |
 | `REDIS_URL`                   | `redis://localhost:6379/0` | Redis connection string (auth cache) |
+| `COOKIE_SECURE`               | `false`                   | Set `true` in production (HTTPS) — wired via Helm `values.prod.yaml` |
