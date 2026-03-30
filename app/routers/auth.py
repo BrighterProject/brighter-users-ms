@@ -1,9 +1,9 @@
 from typing import Annotated
 from urllib.parse import quote
 
+import urllib3
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
-import urllib3
 from google.auth.transport import urllib3 as google_urllib3
 from google.oauth2 import id_token as google_id_token
 from loguru import logger
@@ -166,7 +166,9 @@ async def login_with_google(response: Response, body: GoogleTokenRequest) -> Tok
         if user is not None:
             user.google_id = google_sub
             await user.save()
-            logger.info("Linked Google account to existing user: username={}", user.username)
+            logger.info(
+                "Linked Google account to existing user: username={}", user.username
+            )
 
     if user is None:
         # 3. First-time Google sign-in — create a new account
