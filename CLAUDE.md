@@ -37,7 +37,7 @@ uv run uvicorn main:application --host 0.0.0.0 --port 8000       # dev server
 - `GET /auth/verify` — called by Traefik `forwardAuth`; reads token from cookie first, falls back to `Authorization: Bearer` header; returns `X-User-Id`, `X-Username`, `X-User-Scopes` headers to Traefik
 - `POST /auth/logout` — clears the `access_token` cookie
 
-`get_current_user()` in `app/deps.py` validates the JWT using `python-jose`. Do **not** remove this validation — it is the gateway check for the entire system.
+`get_current_user()` in `app/deps.py` validates the JWT using `python-jose`. Token is extracted via `APIKeyCookie(name="access_token")` — **cookie only, no Bearer fallback**. Do **not** remove this validation — it is the gateway check for the entire system.
 
 Downstream services (properties-ms, bookings-ms) do **not** validate JWTs — they only read the headers Traefik injects after this service approves the request.
 

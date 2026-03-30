@@ -56,7 +56,6 @@ async def login_for_access_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
         )
     logger.info("User logged in: username={}", form_data.username)
 
@@ -77,7 +76,6 @@ async def verify_token(request: Request):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Not authenticated",
-                headers={"WWW-Authenticate": "Bearer"},
             )
         token = auth_header[7:]
 

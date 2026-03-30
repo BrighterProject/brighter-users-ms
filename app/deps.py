@@ -1,25 +1,23 @@
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Security, status
-from fastapi.security import OAuth2PasswordBearer, SecurityScopes
+from fastapi.security import APIKeyCookie, SecurityScopes
 from jose import JWTError, jwt
 
 from app.crud import get_user_by_username
 from app.models import User
 from app.schemas import TokenData
-from app.scopes import SCOPE_DESCS, UserScope
+from app.scopes import UserScope
 from app.settings import (
     ALGORITHM,
     SECRET_KEY,
 )
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token", scopes=SCOPE_DESCS)
-
+cookie_scheme = APIKeyCookie(name="access_token")
 
 _CREDENTIALS_EXCEPTION = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
     detail="Could not validate credentials",
-    headers={"WWW-Authenticate": "Bearer"},
 )
 
 
@@ -42,14 +40,8 @@ async def resolve_user(token: str) -> User:
 
 async def get_current_user(
     security_scopes: SecurityScopes,
-    token: Annotated[str, Depends(oauth2_scheme)],
+    token: Annotated[str, Depends(cookie_scheme)],
 ) -> User:
-    authenticate_value = (
-        f'Bearer scope="{security_scopes.scope_str}"'
-        if security_scopes.scopes
-        else "Bearer"
-    )
-
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str | None = payload.get("sub")
@@ -65,7 +57,6 @@ async def get_current_user(
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not enough permissions",
-                headers={"WWW-Authenticate": authenticate_value},
             )
 
     user = await get_user_by_username(token_data.username)  # type: ignore[arg-type]
