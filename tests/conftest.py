@@ -9,17 +9,23 @@ import os
 # Disable slowapi rate limiting in tests — must be set before app.limiter is imported.
 os.environ["SLOWAPI_NO_LIMITS"] = "true"
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.deps import get_current_active_user, get_current_admin_user
-from app.limiter import limiter
 from app.routers.auth import router as auth_router
 from app.routers.scopes import router as scopes_router
 from app.routers.users import router as users_router
 
 from .factories import make_admin, make_user
+
+# In-memory limiter for unit tests — avoids any Redis connection at import time.
+_limiter = Limiter(key_func=get_remote_address)
 
 
 # ---------------------------------------------------------------------------
@@ -36,7 +42,7 @@ def build_app(active_user, admin_user=None) -> FastAPI:
     app.include_router(auth_router)
     app.include_router(users_router)
     app.include_router(scopes_router)
-    app.state.limiter = limiter
+    app.state.limiter = _limiter
 
     _admin = admin_user if admin_user is not None else active_user
 
@@ -94,3 +100,19 @@ def client_factory():
         )
 
     return _make
+
+
+# ---------------------------------------------------------------------------
+# Redis cache mock — keeps unit tests free of any Redis dependency.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _mock_cache():
+    with (
+        patch("app.routers.auth.get_verify_cache", new=AsyncMock(return_value=None)),
+        patch("app.routers.auth.set_verify_cache", new=AsyncMock()),
+        patch("app.routers.users.invalidate_user_cache", new=AsyncMock()),
+        patch("app.routers.contact.check_contact_rate_limit", new=AsyncMock(return_value=True)),
+    ):
+        yield

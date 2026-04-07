@@ -11,6 +11,7 @@ env:
 
 jobs:
   test:
+    name: Unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,9 +19,28 @@ jobs:
       - run: uv sync --locked
       - run: uv run pytest --tb=short
 
+  integration-test:
+    name: Integration tests (Redis)
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --locked
+      - run: uv run pytest -m integration --tb=short
+
   build-push:
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, integration-test]
     permissions:
       contents: read
       packages: write
