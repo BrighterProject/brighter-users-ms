@@ -17,6 +17,7 @@ dependencies = [
     "google-auth>=2.48.0",
     "aiosmtplib>=5.1.0",
     "httpx>=0.28.1",
+    "slowapi>=0.1.9",
 ]
 [tool.pyright]
 reportInvalidTypeForm = "none"

@@ -7,6 +7,7 @@ from loguru import logger
 from pydantic import BaseModel, EmailStr
 
 from app.cache import check_contact_rate_limit
+from app.limiter import limiter
 from app.settings import (
     CONTACT_EMAIL,
     SMTP_HOST,
@@ -55,7 +56,8 @@ async def _verify_turnstile(token: str, ip: str) -> bool:
 
 
 @router.post("/contact", status_code=status.HTTP_204_NO_CONTENT)
-async def send_contact_message(body: ContactRequest, request: Request):
+@limiter.limit("10/minute")
+async def send_contact_message(request: Request, body: ContactRequest):
     client_ip = _get_client_ip(request)
 
     # Rate limit

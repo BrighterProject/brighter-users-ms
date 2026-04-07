@@ -2,11 +2,12 @@ import secrets
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Security, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Security, status
 from loguru import logger
 
 from app import Schema, user_crud
 from app.auth import get_password_hash
+from app.limiter import limiter
 from app.cache import invalidate_user_cache
 from app.crud import (
     create_user,
@@ -67,7 +68,8 @@ async def _send_verification_email(email: str, token: str, locale: str = "bg") -
 
 
 @router.post("/", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
-async def register_user(payload: UserCreate, locale: str = Query(default="bg")) -> UserPublic:
+@limiter.limit("10/minute")
+async def register_user(request: Request, payload: UserCreate, locale: str = Query(default="bg")) -> UserPublic:
     existing_username = await get_user_by_username(payload.username)
     if existing_username:
         raise HTTPException(
@@ -104,14 +106,18 @@ async def register_user(payload: UserCreate, locale: str = Query(default="bg")) 
 
 
 @router.get("/", response_model=list[Schema])
+@limiter.limit("200/minute")
 async def list_users(
+    request: Request,
     _=Depends(require_scopes("users:read")),
 ) -> list[Schema]:
     return await user_crud.get_all()
 
 
 @router.get("/bulk", response_model=list[Schema])
+@limiter.limit("500/minute")
 async def get_users_bulk(
+    request: Request,
     ids: list[UUID] = Query(...),
 ) -> list[Schema]:
     """Internal bulk lookup by ID — called by peer services on the Docker network."""
@@ -120,14 +126,18 @@ async def get_users_bulk(
 
 
 @router.get("/{user_id}", response_model=Schema)
+@limiter.limit("200/minute")
 async def get_user(
+    request: Request,
     _=Security(get_current_active_user), user_id: UUID = Path()
 ) -> Schema | None:
     return await user_crud.get_by_id(user_id)
 
 
 @router.patch("/{user_id}", response_model=UserPublic)
+@limiter.limit("60/minute")
 async def update_user(
+    request: Request,
     payload: UserUpdate,
     user_id: UUID = Path(),
     current_user: User = Security(get_current_active_user),
@@ -156,21 +166,27 @@ async def update_user(
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("60/minute")
 async def delete_user(
+    request: Request,
     _=Security(get_current_admin_user), user_id: UUID = Path()
 ) -> None:
     await user_crud.delete_by(id=user_id)
 
 
 @router.get("/@me/get", response_model=UserPublic)
+@limiter.limit("200/minute")
 async def read_users_me(
+    request: Request,
     current_user: User = Security(get_current_active_user),
 ) -> UserPublic:
     return UserPublic.model_validate(current_user)
 
 
 @router.get("/{user_id}/scopes", response_model=UserScopesUpdate, tags=["admin"])
+@limiter.limit("60/minute")
 async def get_user_scopes(
+    request: Request,
     user_id: UUID = Path(),
     _=Security(get_current_admin_user),
 ) -> UserScopesUpdate:
@@ -183,7 +199,9 @@ async def get_user_scopes(
 
 
 @router.put("/{user_id}/scopes", response_model=UserScopesUpdate, tags=["admin"])
+@limiter.limit("60/minute")
 async def set_user_scopes(
+    request: Request,
     user_id: UUID,
     payload: UserScopesUpdate,
     _=Security(get_current_admin_user),

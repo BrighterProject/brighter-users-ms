@@ -4,11 +4,17 @@ Shared pytest fixtures available to every test file automatically.
 
 from __future__ import annotations
 
+import os
+
+# Disable slowapi rate limiting in tests — must be set before app.limiter is imported.
+os.environ["SLOWAPI_NO_LIMITS"] = "true"
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.deps import get_current_active_user, get_current_admin_user
+from app.limiter import limiter
 from app.routers.auth import router as auth_router
 from app.routers.scopes import router as scopes_router
 from app.routers.users import router as users_router
@@ -30,6 +36,7 @@ def build_app(active_user, admin_user=None) -> FastAPI:
     app.include_router(auth_router)
     app.include_router(users_router)
     app.include_router(scopes_router)
+    app.state.limiter = limiter
 
     _admin = admin_user if admin_user is not None else active_user
 

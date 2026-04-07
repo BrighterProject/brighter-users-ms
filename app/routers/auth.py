@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from app.auth import authenticate_user, create_access_token
 from app.cache import get_verify_cache, set_verify_cache
+from app.limiter import limiter
 from app.crud import (
     create_user,
     get_user_by_email,
@@ -46,7 +47,9 @@ def _set_auth_cookie(response: Response, token: str) -> None:
 
 
 @router.post("/token", response_model=Token)
+@limiter.limit("10/minute")
 async def login_for_access_token(
+    request: Request,
     response: Response,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
@@ -111,14 +114,16 @@ async def verify_token(request: Request):
 
 
 @router.post("/logout")
-async def logout(response: Response):
+@limiter.limit("30/minute")
+async def logout(request: Request, response: Response):
     """Clear the authentication cookie."""
     response.delete_cookie(key="access_token", path="/")
     return {"message": "Logged out"}
 
 
 @router.get("/verify-email")
-async def verify_email(token: str = Query(..., min_length=1)):
+@limiter.limit("10/minute")
+async def verify_email(request: Request, token: str = Query(..., min_length=1)):
     """Public endpoint — activates a user account via the email verification token."""
     user = await get_user_by_verification_token(token)
     if user is None:
@@ -138,7 +143,8 @@ async def verify_email(token: str = Query(..., min_length=1)):
 
 
 @router.post("/google", response_model=Token)
-async def login_with_google(response: Response, body: GoogleTokenRequest) -> Token:
+@limiter.limit("10/minute")
+async def login_with_google(request: Request, response: Response, body: GoogleTokenRequest) -> Token:
     """Exchange a Google ID token for a platform JWT."""
     try:
         claims = google_id_token.verify_oauth2_token(
