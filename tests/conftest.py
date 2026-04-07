@@ -14,18 +14,14 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from app.deps import get_current_active_user, get_current_admin_user
+from app.limiter import limiter
 from app.routers.auth import router as auth_router
 from app.routers.scopes import router as scopes_router
 from app.routers.users import router as users_router
 
 from .factories import make_admin, make_user
-
-# In-memory limiter for unit tests — avoids any Redis connection at import time.
-_limiter = Limiter(key_func=get_remote_address)
 
 
 # ---------------------------------------------------------------------------
@@ -42,7 +38,7 @@ def build_app(active_user, admin_user=None) -> FastAPI:
     app.include_router(auth_router)
     app.include_router(users_router)
     app.include_router(scopes_router)
-    app.state.limiter = _limiter
+    app.state.limiter = limiter
 
     _admin = admin_user if admin_user is not None else active_user
 
