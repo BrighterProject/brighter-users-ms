@@ -116,6 +116,110 @@ class TestRegisterUser:
 
 
 # ---------------------------------------------------------------------------
+# POST /users/register-owner
+# ---------------------------------------------------------------------------
+
+OWNER_PAYLOAD = {
+    "username": "owner1",
+    "password": "strongpassword",
+    "email": "owner1@example.com",
+    "full_name": "Иван Иванов",
+    "phone": "+359888123456",
+}
+
+
+class TestRegisterOwner:
+    def _make_owner_user(self) -> DummyUser:
+        from app.scopes import DEFAULT_OWNER_SCOPES
+
+        return DummyUser(
+            user_id=uuid4(),
+            username="owner1",
+            email="owner1@example.com",
+            full_name="Иван Иванов",
+            is_active=False,
+            scopes=list(DEFAULT_OWNER_SCOPES),
+            email_verification_token="token-abc",
+        )
+
+    def test_success(self, user_client: TestClient):
+        created = self._make_owner_user()
+        with (
+            patch(f"{USERS_CRUD_PATH}.get_user_by_username", new=AsyncMock(return_value=None)),
+            patch(f"{USERS_CRUD_PATH}.get_user_by_email", new=AsyncMock(return_value=None)),
+            patch(f"{USERS_CRUD_PATH}.create_user", new=AsyncMock(return_value=created)),
+            patch(f"{USERS_CRUD_PATH}._send_verification_email", new=AsyncMock()),
+        ):
+            resp = user_client.post("/users/register-owner", json=OWNER_PAYLOAD)
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["username"] == "owner1"
+        assert body["is_active"] is False
+
+    def test_owner_has_owner_scopes(self, user_client: TestClient):
+        from app.scopes import DEFAULT_OWNER_SCOPES, PropertyScope
+
+        created = self._make_owner_user()
+        with (
+            patch(f"{USERS_CRUD_PATH}.get_user_by_username", new=AsyncMock(return_value=None)),
+            patch(f"{USERS_CRUD_PATH}.get_user_by_email", new=AsyncMock(return_value=None)),
+            patch(f"{USERS_CRUD_PATH}.create_user", new=AsyncMock(return_value=created)),
+            patch(f"{USERS_CRUD_PATH}._send_verification_email", new=AsyncMock()),
+        ):
+            resp = user_client.post("/users/register-owner", json=OWNER_PAYLOAD)
+        assert resp.status_code == 201
+        assert PropertyScope.WRITE in resp.json()["scopes"]
+        assert PropertyScope.ME in resp.json()["scopes"]
+
+    def test_phone_required(self, user_client: TestClient):
+        payload = {**OWNER_PAYLOAD}
+        del payload["phone"]
+        resp = user_client.post("/users/register-owner", json=payload)
+        assert resp.status_code == 422
+
+    def test_email_required(self, user_client: TestClient):
+        payload = {k: v for k, v in OWNER_PAYLOAD.items() if k != "email"}
+        resp = user_client.post("/users/register-owner", json=payload)
+        assert resp.status_code == 422
+
+    def test_duplicate_username(self, user_client: TestClient):
+        existing = make_user()
+        with patch(f"{USERS_CRUD_PATH}.get_user_by_username", new=AsyncMock(return_value=existing)):
+            resp = user_client.post("/users/register-owner", json=OWNER_PAYLOAD)
+        assert resp.status_code == 400
+        assert "Username" in resp.json()["detail"]
+
+    def test_duplicate_email(self, user_client: TestClient):
+        existing = make_user()
+        with (
+            patch(f"{USERS_CRUD_PATH}.get_user_by_username", new=AsyncMock(return_value=None)),
+            patch(f"{USERS_CRUD_PATH}.get_user_by_email", new=AsyncMock(return_value=existing)),
+        ):
+            resp = user_client.post("/users/register-owner", json=OWNER_PAYLOAD)
+        assert resp.status_code == 400
+        assert "Email" in resp.json()["detail"]
+
+    def test_with_company_name(self, user_client: TestClient):
+        created = self._make_owner_user()
+        created.company_name = "Иванов ЕООД"
+        with (
+            patch(f"{USERS_CRUD_PATH}.get_user_by_username", new=AsyncMock(return_value=None)),
+            patch(f"{USERS_CRUD_PATH}.get_user_by_email", new=AsyncMock(return_value=None)),
+            patch(
+                f"{USERS_CRUD_PATH}.create_user", new=AsyncMock(return_value=created)
+            ) as mock_create,
+            patch(f"{USERS_CRUD_PATH}._send_verification_email", new=AsyncMock()),
+        ):
+            resp = user_client.post(
+                "/users/register-owner",
+                json={**OWNER_PAYLOAD, "company_name": "Иванов ЕООД"},
+            )
+        assert resp.status_code == 201
+        _, kwargs = mock_create.call_args
+        assert kwargs.get("company_name") == "Иванов ЕООД"
+
+
+# ---------------------------------------------------------------------------
 # GET /scopes/
 # ---------------------------------------------------------------------------
 

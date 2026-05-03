@@ -23,8 +23,8 @@ from app.deps import (
     require_scopes,
 )
 from app.models import User
-from app.schemas import UserCreate, UserPublic, UserScopesUpdate, UserUpdate
-from app.scopes import DEFAULT_USER_SCOPES, UserScope
+from app.schemas import OwnerCreate, UserCreate, UserPublic, UserScopesUpdate, UserUpdate
+from app.scopes import DEFAULT_OWNER_SCOPES, DEFAULT_USER_SCOPES, UserScope
 from app.settings import FRONTEND_BASE_URL, NOTIFICATIONS_MS_URL
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -101,6 +101,49 @@ async def register_user(request: Request, payload: UserCreate, locale: str = Que
     if payload.email:
         await _send_verification_email(str(payload.email), verification_token, locale)
         logger.info("Verification email sent to {}", payload.email)
+
+    return UserPublic.model_validate(user)
+
+
+@router.post("/register-owner", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
+async def register_owner(
+    request: Request,
+    payload: OwnerCreate,
+    locale: str = Query(default="bg"),
+) -> UserPublic:
+    """Owner self-registration. Grants DEFAULT_OWNER_SCOPES immediately.
+
+    Account is inactive until email is verified; properties go to pending_approval.
+    """
+    if await get_user_by_username(payload.username):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already registered",
+        )
+    if await get_user_by_email(str(payload.email)):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered",
+        )
+
+    hashed_password = get_password_hash(payload.password)
+    verification_token = secrets.token_urlsafe(32)
+
+    user = await create_user(
+        username=payload.username,
+        email=str(payload.email),
+        full_name=payload.full_name,
+        hashed_password=hashed_password,
+        scopes=DEFAULT_OWNER_SCOPES,
+        is_active=False,
+        email_verification_token=verification_token,
+        phone=payload.phone,
+        company_name=payload.company_name,
+    )
+
+    await _send_verification_email(str(payload.email), verification_token, locale)
+    logger.info("Owner registered, verification email sent to {}", payload.email)
 
     return UserPublic.model_validate(user)
 

@@ -37,6 +37,8 @@ async def create_user(
     google_id: str | None = None,
     is_active: bool = True,
     email_verification_token: str | None = None,
+    phone: str | None = None,
+    company_name: str | None = None,
 ) -> User:
     return await User.create(
         username=username,
@@ -47,6 +49,8 @@ async def create_user(
         google_id=google_id,
         is_active=is_active,
         email_verification_token=email_verification_token,
+        phone=phone,
+        company_name=company_name,
     )
 
 
