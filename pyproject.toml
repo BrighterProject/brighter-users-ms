@@ -5,11 +5,10 @@ description = "Users & auth microservice for the BrighterProject platform"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "aerich>=0.8.2",
     "fastapi[standard]>=0.112.4",
     "ms-core",
     "pydantic>=2.11.7",
-    "tortoise-orm[asyncpg]>=0.21.7",
+    "tortoise-orm[asyncpg]>=1.1.7",
     "python-jose[cryptography]>=3.3.0",
     "bcrypt>=4.2.0",
     "redis>=7.2.0",
@@ -41,7 +40,5 @@ reportInvalidTypeForm = "none"
 [tool.uv.sources]
 ms-core = { url = "https://github.com/HexChap/MSCore/archive/refs/heads/master.zip" }
 
-[tool.aerich]
-tortoise_orm = "main.tortoise_conf"
-location = "./migrations"
-src_folder = "./."
+[tool.tortoise]
+tortoise_orm = "main.TORTOISE_ORM"

@@ -13,6 +13,17 @@ from app.limiter import limiter
 from app.logging import setup_logging
 from app.settings import db_url
 
+TORTOISE_ORM = {
+    "connections": {"default": db_url},
+    "apps": {
+        "models": {
+            "models": ["app.models"],
+            "default_connection": "default",
+            "migrations": "migrations.models",
+        },
+    },
+}
+
 setup_logging()
 
 application = FastAPI(title="brighter-users-ms", redirect_slashes=False)
@@ -39,4 +50,4 @@ async def http_exception_logging(request: Request, exc: HTTPException):
     )
 
 
-tortoise_conf = setup_app(application, db_url, Path("app") / "routers", ["app.models"])
+setup_app(application, db_url, Path("app") / "routers", ["app.models"])
