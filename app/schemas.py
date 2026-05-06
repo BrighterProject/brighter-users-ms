@@ -22,6 +22,7 @@ class UserBase(BaseModel):
     scopes: list[str] = []
     phone: str | None = None
     company_name: str | None = None
+    locale: str = "en"
 
 
 class UserCreate(UserBase):
@@ -54,6 +55,7 @@ class UserUpdate(BaseModel):
     is_active: bool | None = None
     phone: str | None = Field(default=None, min_length=6, max_length=30)
     company_name: str | None = Field(default=None, max_length=256)
+    locale: str | None = Field(default=None, max_length=10)
 
 
 class Token(BaseModel):

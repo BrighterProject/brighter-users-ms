@@ -39,6 +39,7 @@ async def create_user(
     email_verification_token: str | None = None,
     phone: str | None = None,
     company_name: str | None = None,
+    locale: str = "en",
 ) -> User:
     return await User.create(
         username=username,
@@ -51,6 +52,7 @@ async def create_user(
         email_verification_token=email_verification_token,
         phone=phone,
         company_name=company_name,
+        locale=locale,
     )
 
 

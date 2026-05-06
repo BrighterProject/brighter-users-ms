@@ -23,3 +23,4 @@ class User(AbstractModel):
     scopes = fields.JSONField(default=list)
     phone = fields.CharField(max_length=30, null=True)
     company_name = fields.CharField(max_length=256, null=True)
+    locale = fields.CharField(max_length=10, default="en")

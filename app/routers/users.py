@@ -96,6 +96,7 @@ async def register_user(request: Request, payload: UserCreate, locale: str = Que
         scopes=DEFAULT_USER_SCOPES,
         is_active=False,
         email_verification_token=verification_token,
+        locale=locale,
     )
 
     if payload.email:
@@ -140,6 +141,7 @@ async def register_owner(
         email_verification_token=verification_token,
         phone=payload.phone,
         company_name=payload.company_name,
+        locale=locale,
     )
 
     await _send_verification_email(str(payload.email), verification_token, locale)
