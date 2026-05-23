@@ -13,6 +13,7 @@ from app.crud import (
     create_user,
     get_user_by_email,
     get_user_by_id,
+    get_user_by_id as get_by_id,
     get_user_by_username,
     get_users_by_ids,
     update_user_scopes,
@@ -23,7 +24,7 @@ from app.deps import (
     require_scopes,
 )
 from app.models import User
-from app.schemas import OwnerCreate, UserCreate, UserPublic, UserScopesUpdate, UserUpdate
+from app.schemas import GrantRolePayload, GrantRoleResponse, OwnerCreate, UserCreate, UserPublic, UserScopesUpdate, UserUpdate
 from app.scopes import DEFAULT_OWNER_SCOPES, DEFAULT_USER_SCOPES, UserScope
 from app.settings import FRONTEND_BASE_URL, NOTIFICATIONS_MS_URL
 
@@ -259,3 +260,33 @@ async def set_user_scopes(
     await invalidate_user_cache(str(user_id))
     logger.info("Scopes updated and cache invalidated: user_id={}", user_id)
     return UserScopesUpdate(scopes=user.scopes or [])
+
+
+@router.post("/{user_id}/grant-role", response_model=GrantRoleResponse, tags=["admin"])
+@limiter.limit("30/minute")
+async def grant_user_role(
+    request: Request,
+    user_id: UUID,
+    payload: GrantRolePayload,
+    _=Security(get_current_admin_user),
+) -> GrantRoleResponse:
+    """Grant a named role to a user by merging the role's scopes into their existing scopes."""
+    owner_scope_strs = {str(s) for s in DEFAULT_OWNER_SCOPES}
+    user = await get_by_id(user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot grant role to an inactive user",
+        )
+
+    current_scopes = set(user.scopes or [])
+    if owner_scope_strs.issubset(current_scopes):
+        return GrantRoleResponse(scopes=list(current_scopes))
+
+    merged = list(current_scopes | owner_scope_strs)
+    updated = await update_user_scopes(user_id, merged)
+    await invalidate_user_cache(str(user_id))
+    logger.info("grant_role: granted owner scopes to user_id={}", user_id)
+    return GrantRoleResponse(scopes=merged if updated is None else (updated.scopes or []))
