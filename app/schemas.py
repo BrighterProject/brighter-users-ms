@@ -1,3 +1,4 @@
+from enum import StrEnum
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -69,4 +70,16 @@ class TokenData(BaseModel):
 
 
 class UserScopesUpdate(BaseModel):
+    scopes: list[str]
+
+
+class RoleGrant(StrEnum):
+    OWNER = "owner"
+
+
+class GrantRolePayload(BaseModel):
+    role: RoleGrant
+
+
+class GrantRoleResponse(BaseModel):
     scopes: list[str]
