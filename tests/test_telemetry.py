@@ -56,27 +56,30 @@ def test_trace_patcher_defaults_outside_span() -> None:
 
 
 def test_trace_patcher_injects_real_ids_inside_span() -> None:
-    provider = TracerProvider()
-    trace.set_tracer_provider(provider)
-    tracer = trace.get_tracer("test")
+    original_provider = trace.get_tracer_provider()
+    try:
+        provider = TracerProvider()
+        trace.set_tracer_provider(provider)
+        tracer = trace.get_tracer("test")
 
-    with tracer.start_as_current_span("test-span"):
-        record: dict = {"extra": {}}
-        _add_trace_context(record)
+        with tracer.start_as_current_span("test-span"):
+            record: dict = {"extra": {}}
+            _add_trace_context(record)
 
-    assert record["extra"]["otelTraceID"] != "0" * 32
-    assert len(record["extra"]["otelTraceID"]) == 32
-    assert len(record["extra"]["otelSpanID"]) == 16
+        assert record["extra"]["otelTraceID"] != "0" * 32
+        assert len(record["extra"]["otelTraceID"]) == 32
+        assert len(record["extra"]["otelSpanID"]) == 16
+    finally:
+        trace.set_tracer_provider(original_provider)
 
 
-def test_otel_disabled_env_var_skips_setup() -> None:
+def test_otel_disabled_env_var_skips_setup(monkeypatch: pytest.MonkeyPatch) -> None:
     import app.telemetry as tel_module
     tel_module._configured = False
-    os.environ["OTEL_SDK_DISABLED"] = "true"
+    monkeypatch.setenv("OTEL_SDK_DISABLED", "true")
     app_ = FastAPI()
     setup_telemetry(app_, "test-service")
     client = TestClient(app_)
     response = client.get("/metrics")
     assert response.status_code == 404  # endpoint was not registered
-    del os.environ["OTEL_SDK_DISABLED"]
     tel_module._configured = False
