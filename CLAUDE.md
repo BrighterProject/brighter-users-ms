@@ -148,3 +148,12 @@ uv run tortoise -c main.TORTOISE_ORM migrate
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | JWT TTL |
 | `REDIS_URL`                   | `redis://localhost:6379/0` | Redis connection string (auth cache) |
 | `COOKIE_SECURE`               | `false`                   | Set `true` in production (HTTPS) — wired via Helm `values.prod.yaml` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://otel-collector:4317` | OTLP gRPC endpoint for trace export |
+| `OTEL_SDK_DISABLED`           | `false`                   | Set `true` to skip telemetry entirely (CI / light dev) |
+| `LOG_COLORIZE`                | `false`                   | Set `true` in compose for ANSI-coloured logs |
+
+## Observability
+
+`app/telemetry.py` — wired via `setup_telemetry(app, "brighter-users-ms")` in `main.py`. Provides distributed traces (OTLP gRPC), Prometheus metrics at `GET /metrics`, and auto-instrumentation (FastAPI, httpx, asyncpg). Set `OTEL_SDK_DISABLED=true` to skip.
+
+`app/logging.py` injects the active OTEL `trace_id` into every loguru record. See the root `CLAUDE.md` `## Observability` section for the full stack docs.
