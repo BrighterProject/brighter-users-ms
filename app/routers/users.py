@@ -2,7 +2,7 @@ import secrets
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Security, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, Request, Security, status
 from loguru import logger
 
 from app import Schema, user_crud
@@ -290,3 +290,58 @@ async def grant_user_role(
     await invalidate_user_cache(str(user_id))
     logger.info("grant_role: granted owner scopes to user_id={}", user_id)
     return GrantRoleResponse(scopes=merged if updated is None else (updated.scopes or []))
+
+
+@router.post("/{user_id}/grant-owner", response_model=GrantRoleResponse, tags=["internal"])
+async def grant_owner_internal(
+    user_id: UUID,
+    x_user_scopes: str = Header(default=""),
+) -> GrantRoleResponse:
+    """Internal-only endpoint for service-to-service calls (no JWT required).
+    Requires admin:scopes in X-User-Scopes header — provided by the calling service.
+    Only reachable on the internal Docker network."""
+    if "admin:scopes" not in x_user_scopes.split():
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    owner_scope_strs = {str(s) for s in DEFAULT_OWNER_SCOPES}
+    user = await get_by_id(user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Cannot grant role to an inactive user")
+
+    current_scopes = set(user.scopes or [])
+    if owner_scope_strs.issubset(current_scopes):
+        return GrantRoleResponse(scopes=list(current_scopes))
+
+    merged = list(current_scopes | owner_scope_strs)
+    updated = await update_user_scopes(user_id, merged)
+    await invalidate_user_cache(str(user_id))
+    logger.info("grant_owner_internal: granted owner scopes to user_id={}", user_id)
+    return GrantRoleResponse(scopes=merged if updated is None else (updated.scopes or []))
+
+
+@router.post("/{user_id}/revoke-owner", response_model=GrantRoleResponse, tags=["internal"])
+async def revoke_owner_internal(
+    user_id: UUID,
+    x_user_scopes: str = Header(default=""),
+) -> GrantRoleResponse:
+    """Internal-only endpoint. Strips DEFAULT_OWNER_SCOPES from the user.
+    Requires admin:scopes in X-User-Scopes header. Only reachable on the internal Docker network."""
+    if "admin:scopes" not in x_user_scopes.split():
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    owner_scope_strs = {str(s) for s in DEFAULT_OWNER_SCOPES}
+    user = await get_by_id(user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    current_scopes = set(user.scopes or [])
+    stripped = list(current_scopes - owner_scope_strs)
+    if len(stripped) == len(current_scopes):
+        return GrantRoleResponse(scopes=stripped)
+
+    updated = await update_user_scopes(user_id, stripped)
+    await invalidate_user_cache(str(user_id))
+    logger.info("revoke_owner_internal: revoked owner scopes from user_id={}", user_id)
+    return GrantRoleResponse(scopes=stripped if updated is None else (updated.scopes or []))
