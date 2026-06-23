@@ -12,7 +12,7 @@ async def drop_locale(apps, schema_editor) -> None:
 
 
 class Migration(Migration):
-    dependencies = [('models', '0002_auto_20260504_0137')]
+    dependencies = [("models", "0002_auto_20260504_0137")]
 
     initial = False
 

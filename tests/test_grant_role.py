@@ -12,17 +12,21 @@ from app.scopes import DEFAULT_OWNER_SCOPES
 
 
 def _make_user(*, is_active: bool = True, scopes: list[str] | None = None):
-    u = type("User", (), {
-        "id": uuid4(),
-        "is_active": is_active,
-        "scopes": scopes or [],
-    })()
+    u = type(
+        "User",
+        (),
+        {
+            "id": uuid4(),
+            "is_active": is_active,
+            "scopes": scopes or [],
+        },
+    )()
     return u
 
 
 def _build_app(admin: bool = True):
     """Build a minimal test app with the users router."""
-    from app.deps import get_current_admin_user, get_current_user
+    from app.deps import get_current_admin_user
 
     app = FastAPI()
     app.include_router(router)
@@ -30,6 +34,7 @@ def _build_app(admin: bool = True):
     async def _admin():
         if not admin:
             from fastapi import HTTPException
+
             raise HTTPException(status_code=403, detail="Forbidden")
         return _make_user(scopes=["admin:users"])
 
@@ -55,8 +60,14 @@ def test_grant_owner_role_success(admin_client):
     mock_updated = _make_user(scopes=merged)
 
     with (
-        patch("app.routers.users.get_by_id", new=AsyncMock(return_value=_make_user(scopes=existing_scopes))),
-        patch("app.routers.users.update_user_scopes", new=AsyncMock(return_value=mock_updated)),
+        patch(
+            "app.routers.users.get_by_id",
+            new=AsyncMock(return_value=_make_user(scopes=existing_scopes)),
+        ),
+        patch(
+            "app.routers.users.update_user_scopes",
+            new=AsyncMock(return_value=mock_updated),
+        ),
         patch("app.routers.users.invalidate_user_cache", new=AsyncMock()),
     ):
         resp = admin_client.post(f"/users/{user_id}/grant-role", json={"role": "owner"})
@@ -78,7 +89,10 @@ def test_grant_role_user_not_found_is_404(admin_client):
 
 
 def test_grant_role_inactive_user_is_409(admin_client):
-    with patch("app.routers.users.get_by_id", new=AsyncMock(return_value=_make_user(is_active=False))):
+    with patch(
+        "app.routers.users.get_by_id",
+        new=AsyncMock(return_value=_make_user(is_active=False)),
+    ):
         resp = admin_client.post(f"/users/{uuid4()}/grant-role", json={"role": "owner"})
     assert resp.status_code == 409
 
@@ -88,9 +102,10 @@ def test_grant_role_idempotent_no_db_write_when_already_owner(admin_client):
     mock_update = AsyncMock()
 
     with (
-        patch("app.routers.users.get_by_id", new=AsyncMock(
-            return_value=_make_user(scopes=owner_scope_strs)
-        )),
+        patch(
+            "app.routers.users.get_by_id",
+            new=AsyncMock(return_value=_make_user(scopes=owner_scope_strs)),
+        ),
         patch("app.routers.users.update_user_scopes", new=mock_update),
         patch("app.routers.users.invalidate_user_cache", new=AsyncMock()),
     ):
