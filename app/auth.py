@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import bcrypt
 from jose import jwt
@@ -12,9 +12,7 @@ from app.settings import (
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return bcrypt.checkpw(
-        plain_password.encode("utf-8"), hashed_password.encode("utf-8")
-    )
+    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
 
 def get_password_hash(password: str) -> str:
@@ -34,13 +32,9 @@ async def authenticate_user(username: str, password: str):
     return user
 
 
-def create_access_token(
-    data: dict, scopes: list[str] | None = None, expires_delta=None
-) -> str:
+def create_access_token(data: dict, scopes: list[str] | None = None, expires_delta=None) -> str:
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or access_token_expires_delta()
-    )
+    expire = datetime.now(UTC) + (expires_delta or access_token_expires_delta())
     to_encode.update({"exp": expire, "scopes": scopes or []})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt

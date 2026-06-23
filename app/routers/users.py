@@ -2,29 +2,49 @@ import secrets
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, Request, Security, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    Header,
+    HTTPException,
+    Path,
+    Query,
+    Request,
+    Security,
+    status,
+)
 from loguru import logger
 
 from app import Schema, user_crud
 from app.auth import get_password_hash
-from app.limiter import limiter
 from app.cache import invalidate_user_cache
 from app.crud import (
     create_user,
     get_user_by_email,
     get_user_by_id,
-    get_user_by_id as get_by_id,
     get_user_by_username,
     get_users_by_ids,
     update_user_scopes,
+)
+from app.crud import (
+    get_user_by_id as get_by_id,
 )
 from app.deps import (
     get_current_active_user,
     get_current_admin_user,
     require_scopes,
 )
+from app.limiter import limiter
 from app.models import User
-from app.schemas import GrantRolePayload, GrantRoleResponse, OwnerCreate, UserCreate, UserPublic, UserScopesUpdate, UserUpdate
+from app.schemas import (
+    GrantRolePayload,
+    GrantRoleResponse,
+    OwnerCreate,
+    UserCreate,
+    UserPublic,
+    UserScopesUpdate,
+    UserUpdate,
+)
 from app.scopes import DEFAULT_OWNER_SCOPES, DEFAULT_USER_SCOPES, UserScope
 from app.settings import FRONTEND_BASE_URL, NOTIFICATIONS_MS_URL
 
@@ -36,12 +56,12 @@ async def _send_verification_email(email: str, token: str, locale: str = "bg") -
     verify_url = f"{FRONTEND_BASE_URL}/{locale}/auth/verify-email?token={token}"
     html = (
         "<h2>Потвърдете имейла си / Verify your email</h2>"
-        f'<p>Натиснете бутона по-долу, за да активирате акаунта си:</p>'
-        f'<p>Click the button below to activate your account:</p>'
+        f"<p>Натиснете бутона по-долу, за да активирате акаунта си:</p>"
+        f"<p>Click the button below to activate your account:</p>"
         f'<a href="{verify_url}" style="display:inline-block;padding:12px 24px;'
-        f'background:#10b981;color:#fff;text-decoration:none;border-radius:6px;'
+        f"background:#10b981;color:#fff;text-decoration:none;border-radius:6px;"
         f'font-weight:600;">Потвърди / Verify</a>'
-        f"<p style=\"color:#888;font-size:12px;margin-top:24px;\">"
+        f'<p style="color:#888;font-size:12px;margin-top:24px;">'
         f"Ако не сте създали акаунт, игнорирайте този имейл.<br>"
         f"If you didn't create an account, ignore this email.</p>"
     )
@@ -70,7 +90,9 @@ async def _send_verification_email(email: str, token: str, locale: str = "bg") -
 
 @router.post("/", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
 @limiter.limit("10/minute")
-async def register_user(request: Request, payload: UserCreate, locale: str = Query(default="bg")) -> UserPublic:
+async def register_user(
+    request: Request, payload: UserCreate, locale: str = Query(default="bg")
+) -> UserPublic:
     existing_username = await get_user_by_username(payload.username)
     if existing_username:
         raise HTTPException(
@@ -174,8 +196,7 @@ async def get_users_bulk(
 @router.get("/{user_id}", response_model=Schema)
 @limiter.limit("200/minute")
 async def get_user(
-    request: Request,
-    _=Security(get_current_active_user), user_id: UUID = Path()
+    request: Request, _=Security(get_current_active_user), user_id: UUID = Path()
 ) -> Schema | None:
     return await user_crud.get_by_id(user_id)
 
@@ -202,9 +223,7 @@ async def update_user(
     updated_user = await user_crud.update_by(update_data, id=user_id)
 
     if not updated_user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     await invalidate_user_cache(str(user_id))
     logger.info("User updated and cache invalidated: user_id={}", user_id)
@@ -214,8 +233,7 @@ async def update_user(
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("60/minute")
 async def delete_user(
-    request: Request,
-    _=Security(get_current_admin_user), user_id: UUID = Path()
+    request: Request, _=Security(get_current_admin_user), user_id: UUID = Path()
 ) -> None:
     await user_crud.delete_by(id=user_id)
 
@@ -238,9 +256,7 @@ async def get_user_scopes(
 ) -> UserScopesUpdate:
     user = await get_user_by_id(user_id)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return UserScopesUpdate(scopes=user.scopes or [])
 
 
@@ -254,9 +270,7 @@ async def set_user_scopes(
 ) -> UserScopesUpdate:
     user = await update_user_scopes(user_id, payload.scopes)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     await invalidate_user_cache(str(user_id))
     logger.info("Scopes updated and cache invalidated: user_id={}", user_id)
     return UserScopesUpdate(scopes=user.scopes or [])
@@ -308,7 +322,10 @@ async def grant_owner_internal(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Cannot grant role to an inactive user")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot grant role to an inactive user",
+        )
 
     current_scopes = set(user.scopes or [])
     if owner_scope_strs.issubset(current_scopes):

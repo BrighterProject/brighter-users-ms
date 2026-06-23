@@ -81,7 +81,7 @@ async def send_contact_message(request: Request, body: ContactRequest):
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="CAPTCHA verification unavailable",
-        )
+        ) from None
 
     if not SMTP_USER or not SMTP_PASSWORD:
         logger.error("SMTP credentials not configured — cannot send contact email")
@@ -96,10 +96,7 @@ async def send_contact_message(request: Request, body: ContactRequest):
     msg["To"] = CONTACT_EMAIL
     msg["Reply-To"] = body.email
     msg.set_content(
-        f"Name: {body.name}\n"
-        f"Email: {body.email}\n"
-        f"Subject: {body.subject}\n\n"
-        f"{body.message}"
+        f"Name: {body.name}\nEmail: {body.email}\nSubject: {body.subject}\n\n{body.message}"
     )
 
     try:
@@ -117,4 +114,4 @@ async def send_contact_message(request: Request, body: ContactRequest):
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Failed to send email",
-        )
+        ) from None

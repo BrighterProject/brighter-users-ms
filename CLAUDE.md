@@ -16,6 +16,8 @@ uv run <command>       # run in the venv
 
 ```bash
 uv run pytest                                                     # run tests
+uv run ruff check .                                               # lint
+uv run ty check                                                   # type check
 uv run uvicorn main:application --host 0.0.0.0 --port 8000       # dev server
 ```
 
@@ -157,3 +159,14 @@ uv run tortoise -c main.TORTOISE_ORM migrate
 `app/telemetry.py` — wired via `setup_telemetry(app, "brighter-users-ms")` in `main.py`. Provides distributed traces (OTLP gRPC), Prometheus metrics at `GET /metrics`, and auto-instrumentation (FastAPI, httpx, asyncpg). Set `OTEL_SDK_DISABLED=true` to skip.
 
 `app/logging.py` injects the active OTEL `trace_id` into every loguru record. See the root `CLAUDE.md` `## Observability` section for the full stack docs.
+
+## Git & Branch Workflow
+
+- **Branch off `dev`**: all new work starts from `dev` — use `feat/<slug>` (or `fix/`, `chore/`, `test/`, `refactor/` as appropriate)
+- **PR targets `dev`**: never push directly to `dev` or `main`
+- **Approval required**: at least one human approval before merging
+- **CI must be green**: all checks must pass before merging
+- **Staging on green `dev`**: a passing `dev` triggers an automatic staging deployment
+- **`dev` → `main` is manual**: when `dev` is stable and ready to ship, open a PR from `dev` to `main` and merge manually
+- **Hotfixes bypass `dev`**: branch off `main` as `fix/<slug>`, PR directly to `main`, then backport to `dev`
+- **Branch cleanup**: delete merged branches periodically — keep them for a while for reference, then clean up

@@ -34,6 +34,15 @@ dev = [
     "ruff>=0.9",
 ]
 
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+exclude = ["migrations"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["B008"]
+
 [tool.pytest.ini_options]
 addopts = "-v -m 'not integration'"
 testpaths = ["tests"]
