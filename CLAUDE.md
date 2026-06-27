@@ -16,6 +16,8 @@ uv run <command>       # run in the venv
 
 ```bash
 uv run pytest                                                     # run tests
+uv run ruff check .                                               # lint
+uv run ty check                                                   # type check
 uv run uvicorn main:application --host 0.0.0.0 --port 8000       # dev server
 ```
 
@@ -131,11 +133,11 @@ def test_something(monkeypatch, client: TestClient):
 
 - Tests: SQLite in-memory (default)
 - Production: PostgreSQL (`DB_URL` env var)
-- Migrations: Aerich — config in `pyproject.toml`, stored in `./migrations/`
+- Migrations: native tortoise CLI — config in `pyproject.toml` (`[tool.tortoise]`), stored in `./migrations/models/`
 
 ```bash
-uv run aerich migrate --name <description>
-uv run aerich upgrade
+uv run tortoise -c main.TORTOISE_ORM makemigrations
+uv run tortoise -c main.TORTOISE_ORM migrate
 ```
 
 ## Environment variables
@@ -148,3 +150,23 @@ uv run aerich upgrade
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | JWT TTL |
 | `REDIS_URL`                   | `redis://localhost:6379/0` | Redis connection string (auth cache) |
 | `COOKIE_SECURE`               | `false`                   | Set `true` in production (HTTPS) — wired via Helm `values.prod.yaml` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://otel-collector:4317` | OTLP gRPC endpoint for trace export |
+| `OTEL_SDK_DISABLED`           | `false`                   | Set `true` to skip telemetry entirely (CI / light dev) |
+| `LOG_COLORIZE`                | `false`                   | Set `true` in compose for ANSI-coloured logs |
+
+## Observability
+
+`app/telemetry.py` — wired via `setup_telemetry(app, "brighter-users-ms")` in `main.py`. Provides distributed traces (OTLP gRPC), Prometheus metrics at `GET /metrics`, and auto-instrumentation (FastAPI, httpx, asyncpg). Set `OTEL_SDK_DISABLED=true` to skip.
+
+`app/logging.py` injects the active OTEL `trace_id` into every loguru record. See the root `CLAUDE.md` `## Observability` section for the full stack docs.
+
+## Git & Branch Workflow
+
+- **Branch off `dev`**: all new work starts from `dev` — use `feat/<slug>` (or `fix/`, `chore/`, `test/`, `refactor/` as appropriate)
+- **PR targets `dev`**: never push directly to `dev` or `main`
+- **Approval required**: at least one human approval before merging
+- **CI must be green**: all checks must pass before merging
+- **Staging on green `dev`**: a passing `dev` triggers an automatic staging deployment
+- **`dev` → `main` is manual**: when `dev` is stable and ready to ship, open a PR from `dev` to `main` and merge manually
+- **Hotfixes bypass `dev`**: branch off `main` as `fix/<slug>`, PR directly to `main`, then backport to `dev`
+- **Branch cleanup**: delete merged branches periodically — keep them for a while for reference, then clean up

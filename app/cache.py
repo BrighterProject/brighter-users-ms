@@ -64,7 +64,7 @@ async def invalidate_user_cache(user_id: str) -> None:
     try:
         r = get_redis()
         user_key = _user_tokens_key(user_id)
-        token_hashes = await r.smembers(user_key)
+        token_hashes = await r.smembers(user_key)  # type: ignore
         if token_hashes:
             keys = [f"auth:verify:{h}" for h in token_hashes]
             await r.delete(*keys, user_key)

@@ -23,7 +23,6 @@ from app.routers.users import router as users_router
 
 from .factories import make_admin, make_user
 
-
 # ---------------------------------------------------------------------------
 # App builder
 # ---------------------------------------------------------------------------
@@ -109,6 +108,9 @@ def _mock_cache():
         patch("app.routers.auth.get_verify_cache", new=AsyncMock(return_value=None)),
         patch("app.routers.auth.set_verify_cache", new=AsyncMock()),
         patch("app.routers.users.invalidate_user_cache", new=AsyncMock()),
-        patch("app.routers.contact.check_contact_rate_limit", new=AsyncMock(return_value=True)),
+        patch(
+            "app.routers.contact.check_contact_rate_limit",
+            new=AsyncMock(return_value=True),
+        ),
     ):
         yield

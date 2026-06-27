@@ -1,6 +1,7 @@
+from enum import StrEnum
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from tortoise import Tortoise
 from tortoise.contrib.pydantic import pydantic_model_creator
 
@@ -20,10 +21,27 @@ class UserBase(BaseModel):
     email: EmailStr | None = None
     is_active: bool = True
     scopes: list[str] = []
+    phone: str | None = None
+    company_name: str | None = None
+    locale: str = "en"
 
 
 class UserCreate(UserBase):
     password: str
+
+
+class OwnerCreate(BaseModel):
+    """Registration payload for owner self-sign-up.
+
+    Requires phone and email; gets DEFAULT_OWNER_SCOPES automatically.
+    """
+
+    username: str
+    password: str
+    full_name: str
+    email: EmailStr
+    phone: str = Field(..., min_length=6, max_length=30)
+    company_name: str | None = Field(default=None, max_length=256)
 
 
 class UserPublic(UserBase):
@@ -36,6 +54,9 @@ class UserUpdate(BaseModel):
     password: str | None = None
     email: EmailStr | None = None
     is_active: bool | None = None
+    phone: str | None = Field(default=None, min_length=6, max_length=30)
+    company_name: str | None = Field(default=None, max_length=256)
+    locale: str | None = Field(default=None, max_length=10)
 
 
 class Token(BaseModel):
@@ -49,4 +70,16 @@ class TokenData(BaseModel):
 
 
 class UserScopesUpdate(BaseModel):
+    scopes: list[str]
+
+
+class RoleGrant(StrEnum):
+    OWNER = "owner"
+
+
+class GrantRolePayload(BaseModel):
+    role: RoleGrant
+
+
+class GrantRoleResponse(BaseModel):
     scopes: list[str]

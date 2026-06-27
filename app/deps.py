@@ -29,7 +29,7 @@ async def resolve_user(token: str) -> User:
         if username is None:
             raise _CREDENTIALS_EXCEPTION
     except JWTError:
-        raise _CREDENTIALS_EXCEPTION
+        raise _CREDENTIALS_EXCEPTION from None
 
     user = await get_user_by_username(username)
     if user is None or not user.is_active:
@@ -50,7 +50,7 @@ async def get_current_user(
             raise _CREDENTIALS_EXCEPTION
         token_data = TokenData(username=username, scopes=token_scopes)
     except JWTError:
-        raise _CREDENTIALS_EXCEPTION
+        raise _CREDENTIALS_EXCEPTION from None
 
     for scope in security_scopes.scopes:
         if scope not in token_data.scopes:
@@ -64,9 +64,7 @@ async def get_current_user(
         raise _CREDENTIALS_EXCEPTION
 
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Account is deactivated"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is deactivated")
 
     return user
 

@@ -34,8 +34,14 @@ class TestGoogleLogin:
             scopes=["users:me"],
         )
         with (
-            patch(f"{AUTH_ROUTER_PATH}.google_id_token.verify_oauth2_token", return_value=GOOGLE_CLAIMS),
-            patch(f"{AUTH_ROUTER_PATH}.get_user_by_google_id", new=AsyncMock(return_value=existing)),
+            patch(
+                f"{AUTH_ROUTER_PATH}.google_id_token.verify_oauth2_token",
+                return_value=GOOGLE_CLAIMS,
+            ),
+            patch(
+                f"{AUTH_ROUTER_PATH}.get_user_by_google_id",
+                new=AsyncMock(return_value=existing),
+            ),
         ):
             resp = user_client.post("/auth/google", json={"credential": "fake-id-token"})
 
@@ -60,9 +66,18 @@ class TestGoogleLogin:
         mock_user.save = AsyncMock()
 
         with (
-            patch(f"{AUTH_ROUTER_PATH}.google_id_token.verify_oauth2_token", return_value=GOOGLE_CLAIMS),
-            patch(f"{AUTH_ROUTER_PATH}.get_user_by_google_id", new=AsyncMock(return_value=None)),
-            patch(f"{AUTH_ROUTER_PATH}.get_user_by_email", new=AsyncMock(return_value=mock_user)),
+            patch(
+                f"{AUTH_ROUTER_PATH}.google_id_token.verify_oauth2_token",
+                return_value=GOOGLE_CLAIMS,
+            ),
+            patch(
+                f"{AUTH_ROUTER_PATH}.get_user_by_google_id",
+                new=AsyncMock(return_value=None),
+            ),
+            patch(
+                f"{AUTH_ROUTER_PATH}.get_user_by_email",
+                new=AsyncMock(return_value=mock_user),
+            ),
         ):
             resp = user_client.post("/auth/google", json={"credential": "fake-id-token"})
 
@@ -80,10 +95,22 @@ class TestGoogleLogin:
             scopes=["users:me", "properties:read"],
         )
         with (
-            patch(f"{AUTH_ROUTER_PATH}.google_id_token.verify_oauth2_token", return_value=GOOGLE_CLAIMS),
-            patch(f"{AUTH_ROUTER_PATH}.get_user_by_google_id", new=AsyncMock(return_value=None)),
-            patch(f"{AUTH_ROUTER_PATH}.get_user_by_email", new=AsyncMock(return_value=None)),
-            patch(f"{AUTH_ROUTER_PATH}.get_user_by_username", new=AsyncMock(return_value=None)),
+            patch(
+                f"{AUTH_ROUTER_PATH}.google_id_token.verify_oauth2_token",
+                return_value=GOOGLE_CLAIMS,
+            ),
+            patch(
+                f"{AUTH_ROUTER_PATH}.get_user_by_google_id",
+                new=AsyncMock(return_value=None),
+            ),
+            patch(
+                f"{AUTH_ROUTER_PATH}.get_user_by_email",
+                new=AsyncMock(return_value=None),
+            ),
+            patch(
+                f"{AUTH_ROUTER_PATH}.get_user_by_username",
+                new=AsyncMock(return_value=None),
+            ),
             patch(f"{AUTH_ROUTER_PATH}.create_user", new=AsyncMock(return_value=created)),
         ):
             resp = user_client.post("/auth/google", json={"credential": "fake-id-token"})
@@ -98,12 +125,24 @@ class TestGoogleLogin:
             user_id=uuid4(), username="alice1", email="alice@example.com", scopes=[]
         )
 
-        get_by_username_calls = [taken, None]  # first call returns taken, second returns None
+        get_by_username_calls = [
+            taken,
+            None,
+        ]  # first call returns taken, second returns None
 
         with (
-            patch(f"{AUTH_ROUTER_PATH}.google_id_token.verify_oauth2_token", return_value=GOOGLE_CLAIMS),
-            patch(f"{AUTH_ROUTER_PATH}.get_user_by_google_id", new=AsyncMock(return_value=None)),
-            patch(f"{AUTH_ROUTER_PATH}.get_user_by_email", new=AsyncMock(return_value=None)),
+            patch(
+                f"{AUTH_ROUTER_PATH}.google_id_token.verify_oauth2_token",
+                return_value=GOOGLE_CLAIMS,
+            ),
+            patch(
+                f"{AUTH_ROUTER_PATH}.get_user_by_google_id",
+                new=AsyncMock(return_value=None),
+            ),
+            patch(
+                f"{AUTH_ROUTER_PATH}.get_user_by_email",
+                new=AsyncMock(return_value=None),
+            ),
             patch(
                 f"{AUTH_ROUTER_PATH}.get_user_by_username",
                 new=AsyncMock(side_effect=get_by_username_calls),

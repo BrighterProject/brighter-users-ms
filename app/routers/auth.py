@@ -11,7 +11,6 @@ from pydantic import BaseModel
 
 from app.auth import authenticate_user, create_access_token
 from app.cache import get_verify_cache, set_verify_cache
-from app.limiter import limiter
 from app.crud import (
     create_user,
     get_user_by_email,
@@ -20,6 +19,7 @@ from app.crud import (
     get_user_by_verification_token,
 )
 from app.deps import resolve_user
+from app.limiter import limiter
 from app.schemas import Token
 from app.scopes import DEFAULT_USER_SCOPES
 from app.settings import ACCESS_TOKEN_EXPIRE_MINUTES, COOKIE_SECURE, GOOGLE_CLIENT_ID
@@ -62,9 +62,7 @@ async def login_for_access_token(
         )
     logger.info("User logged in: username={}", form_data.username)
 
-    access_token = create_access_token(
-        data={"sub": user.username}, scopes=user.scopes or []
-    )
+    access_token = create_access_token(data={"sub": user.username}, scopes=user.scopes or [])
     _set_auth_cookie(response, access_token)
     return Token(access_token=access_token, token_type="bearer")
 
@@ -144,7 +142,9 @@ async def verify_email(request: Request, token: str = Query(..., min_length=1)):
 
 @router.post("/google", response_model=Token)
 @limiter.limit("10/minute")
-async def login_with_google(request: Request, response: Response, body: GoogleTokenRequest) -> Token:
+async def login_with_google(
+    request: Request, response: Response, body: GoogleTokenRequest
+) -> Token:
     """Exchange a Google ID token for a platform JWT."""
     try:
         claims = google_id_token.verify_oauth2_token(
@@ -155,7 +155,7 @@ async def login_with_google(request: Request, response: Response, body: GoogleTo
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Google credential",
-        )
+        ) from None
 
     google_sub: str = claims["sub"]
     email: str = claims.get("email", "")
@@ -170,9 +170,7 @@ async def login_with_google(request: Request, response: Response, body: GoogleTo
         if user is not None:
             user.google_id = google_sub
             await user.save()
-            logger.info(
-                "Linked Google account to existing user: username={}", user.username
-            )
+            logger.info("Linked Google account to existing user: username={}", user.username)
 
     if user is None:
         # 3. First-time Google sign-in — create a new account
@@ -193,8 +191,6 @@ async def login_with_google(request: Request, response: Response, body: GoogleTo
         )
         logger.info("Created new user via Google OAuth: username={}", user.username)
 
-    access_token = create_access_token(
-        data={"sub": user.username}, scopes=user.scopes or []
-    )
+    access_token = create_access_token(data={"sub": user.username}, scopes=user.scopes or [])
     _set_auth_cookie(response, access_token)
     return Token(access_token=access_token, token_type="bearer")

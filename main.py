@@ -12,6 +12,18 @@ from slowapi.errors import RateLimitExceeded
 from app.limiter import limiter
 from app.logging import setup_logging
 from app.settings import db_url
+from app.telemetry import setup_telemetry
+
+TORTOISE_ORM = {
+    "connections": {"default": db_url},
+    "apps": {
+        "models": {
+            "models": ["app.models"],
+            "default_connection": "default",
+            "migrations": "migrations.models",
+        },
+    },
+}
 
 setup_logging()
 
@@ -30,7 +42,10 @@ application.add_middleware(
 
 @application.exception_handler(HTTPException)
 async def http_exception_logging(request: Request, exc: HTTPException):
-    logger.opt(exception=exc).error(f"HTTPException caught: {exc.detail}")
+    if exc.status_code >= 500:
+        logger.opt(exception=exc).error(f"HTTPException caught: {exc.detail}")
+    else:
+        logger.warning(f"HTTP {exc.status_code}: {exc.detail}")
 
     return JSONResponse(
         status_code=exc.status_code,
@@ -39,4 +54,6 @@ async def http_exception_logging(request: Request, exc: HTTPException):
     )
 
 
-tortoise_conf = setup_app(application, db_url, Path("app") / "routers", ["app.models"])
+setup_telemetry(application, "brighter-users-ms")
+
+setup_app(application, db_url, Path("app") / "routers", ["app.models"])
