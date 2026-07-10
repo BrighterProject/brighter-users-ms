@@ -86,11 +86,11 @@ class TestGoogleLogin:
         mock_user.save.assert_awaited_once()
         assert mock_user.google_id == GOOGLE_CLAIMS["sub"]
 
-    def test_new_user_created_on_first_google_login(self, user_client: TestClient):
-        """No existing user — a new account is created with default scopes."""
+    def test_new_user_created_with_email_as_username(self, user_client: TestClient):
+        """No existing user — a new account is created with the email as username."""
         created = DummyUser(
             user_id=uuid4(),
-            username="alice",
+            username="alice@example.com",
             email="alice@example.com",
             scopes=["users:me", "properties:read"],
         )
@@ -108,55 +108,35 @@ class TestGoogleLogin:
                 new=AsyncMock(return_value=None),
             ),
             patch(
-                f"{AUTH_ROUTER_PATH}.get_user_by_username",
-                new=AsyncMock(return_value=None),
-            ),
-            patch(f"{AUTH_ROUTER_PATH}.create_user", new=AsyncMock(return_value=created)),
-        ):
-            resp = user_client.post("/auth/google", json={"credential": "fake-id-token"})
-
-        assert resp.status_code == 200
-        assert "access_token" in resp.json()
-
-    def test_username_collision_resolved(self, user_client: TestClient):
-        """If 'alice' is taken, the new user gets 'alice1'."""
-        taken = DummyUser(username="alice")
-        created = DummyUser(
-            user_id=uuid4(), username="alice1", email="alice@example.com", scopes=[]
-        )
-
-        get_by_username_calls = [
-            taken,
-            None,
-        ]  # first call returns taken, second returns None
-
-        with (
-            patch(
-                f"{AUTH_ROUTER_PATH}.google_id_token.verify_oauth2_token",
-                return_value=GOOGLE_CLAIMS,
-            ),
-            patch(
-                f"{AUTH_ROUTER_PATH}.get_user_by_google_id",
-                new=AsyncMock(return_value=None),
-            ),
-            patch(
-                f"{AUTH_ROUTER_PATH}.get_user_by_email",
-                new=AsyncMock(return_value=None),
-            ),
-            patch(
-                f"{AUTH_ROUTER_PATH}.get_user_by_username",
-                new=AsyncMock(side_effect=get_by_username_calls),
-            ),
-            patch(
-                f"{AUTH_ROUTER_PATH}.create_user",
-                new=AsyncMock(return_value=created),
+                f"{AUTH_ROUTER_PATH}.create_user", new=AsyncMock(return_value=created)
             ) as mock_create,
         ):
             resp = user_client.post("/auth/google", json={"credential": "fake-id-token"})
 
         assert resp.status_code == 200
+        assert "access_token" in resp.json()
         _, kwargs = mock_create.call_args
-        assert kwargs.get("username") == "alice1" or mock_create.call_args[0][0] == "alice1"
+        assert kwargs["username"] == "alice@example.com"
+        assert kwargs["email"] == "alice@example.com"
+
+    def test_google_account_without_email_rejected(self, user_client: TestClient):
+        """A Google account with no email cannot create a user → 400."""
+        claims_no_email = {"sub": "google-uid-999", "name": "No Email"}
+        with (
+            patch(
+                f"{AUTH_ROUTER_PATH}.google_id_token.verify_oauth2_token",
+                return_value=claims_no_email,
+            ),
+            patch(
+                f"{AUTH_ROUTER_PATH}.get_user_by_google_id",
+                new=AsyncMock(return_value=None),
+            ),
+            patch(f"{AUTH_ROUTER_PATH}.create_user", new=AsyncMock()) as mock_create,
+        ):
+            resp = user_client.post("/auth/google", json={"credential": "fake-id-token"})
+
+        assert resp.status_code == 400
+        mock_create.assert_not_called()
 
     def test_invalid_google_token_returns_401(self, user_client: TestClient):
         """Bad/expired Google credential → 401."""

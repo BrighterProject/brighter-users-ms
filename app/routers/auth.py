@@ -15,7 +15,6 @@ from app.crud import (
     create_user,
     get_user_by_email,
     get_user_by_google_id,
-    get_user_by_username,
     get_user_by_verification_token,
 )
 from app.deps import resolve_user
@@ -173,17 +172,21 @@ async def login_with_google(
             logger.info("Linked Google account to existing user: username={}", user.username)
 
     if user is None:
-        # 3. First-time Google sign-in — create a new account
-        username_base = email.split("@")[0] if email else google_sub[:20]
-        username = username_base
-        counter = 1
-        while await get_user_by_username(username) is not None:
-            username = f"{username_base}{counter}"
-            counter += 1
+        # 3. First-time Google sign-in — create a new account.
+        #    The platform treats the username as the user's email everywhere, so
+        #    the verified Google email is used directly as the username. Any
+        #    pre-existing account with this email is already handled by the
+        #    auto-link step above, so no collision handling is needed here.
+        if not email:
+            logger.warning("Google account has no email; cannot create user")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Google account has no email address",
+            )
 
         user = await create_user(
-            username=username,
-            email=email or None,
+            username=email,
+            email=email,
             full_name=full_name,
             hashed_password=None,
             scopes=[str(s) for s in DEFAULT_USER_SCOPES],
